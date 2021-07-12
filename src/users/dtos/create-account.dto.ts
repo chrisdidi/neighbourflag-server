@@ -25,4 +25,7 @@ export class BasicUserInfo {
 export class CreateAccountOutput extends CoreOutput {
   @Field(type => BasicUserInfo, { nullable: true })
   user?: BasicUserInfo;
+
+  @Field(type => String, { nullable: true })
+  accessToken?: string;
 }

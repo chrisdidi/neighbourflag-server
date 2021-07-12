@@ -4,7 +4,12 @@ import {
   CreateAccountInput,
   CreateAccountOutput,
 } from './dtos/create-account.dto';
+import {
+  RequestVerificationInput,
+  RequestVerificationOuput,
+} from './dtos/request-verification';
 import { SignInInput, SignInOutput } from './dtos/sign-in.dto';
+import { VerifyEmailInput, VerifyEmailOutput } from './dtos/verify-email.dto';
 import { Users } from './entities/user.entities';
 import { UsersService } from './users.service';
 
@@ -25,5 +30,15 @@ export class UsersResolver {
   @Mutation(returns => SignInOutput)
   signIn(@Args('input') input: SignInInput) {
     return this.usersService.signIn(input);
+  }
+
+  @Mutation(returns => RequestVerificationOuput)
+  requestVerification(@Args('input') input: RequestVerificationInput) {
+    return this.usersService.requestVerificationCode(input);
+  }
+
+  @Mutation(returns => VerifyEmailOutput)
+  verifyEmail(@Args('input') input: VerifyEmailInput) {
+    return this.usersService.verifyEmail(input);
   }
 }

@@ -7,6 +7,8 @@ import * as Joi from 'joi';
 import { Users } from './users/entities/user.entities';
 import { GraphQLModule } from '@nestjs/graphql';
 import { JwtModule } from './jwt/jwt.module';
+import { MailModule } from './mail/mail.module';
+import { Verification } from './users/entities/verification.entities';
 
 @Module({
   imports: [
@@ -24,6 +26,7 @@ import { JwtModule } from './jwt/jwt.module';
         MAILGUN_API_KEY: Joi.string(),
         MAILGUN_DOMAIN_NAME: Joi.string(),
         MAILGUN_FROM_EMAIL: Joi.string(),
+        MAILGUN_HELP_EMAIL: Joi.string(),
         JWT_KEY: Joi.string(),
         ADMIN_EMAIL: Joi.string(),
       }),
@@ -37,7 +40,7 @@ import { JwtModule } from './jwt/jwt.module';
       database: process.env.DB_NAME,
       synchronize: process.env.NODE_ENV === 'development',
       logging: process.env.NODE_ENV === 'production',
-      entities: [Users],
+      entities: [Users, Verification],
     }),
     GraphQLModule.forRoot({
       autoSchemaFile: true,
@@ -48,6 +51,12 @@ import { JwtModule } from './jwt/jwt.module';
     }),
     JwtModule.forRoot({
       privateKey: process.env.JWT_KEY,
+    }),
+    MailModule.forRoot({
+      apiKey: process.env.MAILGUN_API_KEY,
+      domain: process.env.MAILGUN_DOMAIN_NAME,
+      fromEmail: process.env.MAILGUN_FROM_EMAIL,
+      helpEmail: process.env.MAILGUN_HELP_EMAIL,
     }),
     UsersModule,
     CommonModule,

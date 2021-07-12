@@ -1,6 +1,8 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { JwtService } from 'src/jwt/jwt.service';
+import { MailService } from 'src/mail/mail.service';
+import { padWithChar } from 'src/utils/algo';
 import { commonErrorMessage } from 'src/utils/constants';
 import { Repository } from 'typeorm';
 import {
@@ -8,14 +10,23 @@ import {
   CreateAccountOutput,
 } from './dtos/create-account.dto';
 import { FindByIdOutput } from './dtos/find-by-id.dto';
+import {
+  RequestVerificationInput,
+  RequestVerificationOuput,
+} from './dtos/request-verification';
 import { SignInInput, SignInOutput } from './dtos/sign-in.dto';
+import { VerifyEmailInput, VerifyEmailOutput } from './dtos/verify-email.dto';
 import { AllowedAuthType, Users } from './entities/user.entities';
+import { Verification } from './entities/verification.entities';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(Users) private readonly users: Repository<Users>,
+    @InjectRepository(Verification)
+    private readonly verifications: Repository<Verification>,
     private readonly jwtService: JwtService,
+    private readonly mailService: MailService,
   ) {}
   async findById(id: number): Promise<FindByIdOutput> {
     try {
@@ -59,8 +70,14 @@ export class UsersService {
           ok: true,
           error: 'Failed to created account, please try again.',
         };
+      const newCode = await this.verifications.save(
+        this.verifications.create({ user }),
+      );
+      await this.mailService.sendVerificationEmail(user.email, newCode.code);
+      const accessToken = this.jwtService.sign(user.id);
       return {
         ok: true,
+        accessToken,
         user: {
           id: user.id,
           email,
@@ -72,6 +89,53 @@ export class UsersService {
     }
   }
 
+  async requestVerificationCode({
+    email,
+  }: RequestVerificationInput): Promise<RequestVerificationOuput> {
+    try {
+      email = email.toLowerCase();
+      const user = await this.users.findOne({ email });
+      const existingCodes = await this.verifications.find({
+        where: {
+          user,
+        },
+        relations: ['user'],
+        order: { id: 'DESC' },
+        take: 1,
+      });
+      if (existingCodes && existingCodes[0]) {
+        const expireDate = existingCodes[0].expire_at;
+        const now = new Date();
+        if (expireDate > now) {
+          const diff = Math.abs(expireDate.getTime() - now.getTime());
+          const diffInSeconds = parseInt(diff / 1000 + '');
+          const minutes = diffInSeconds / 60 + '';
+          const seconds = diffInSeconds % 60;
+          return {
+            ok: false,
+            error: `You have previously requested for a code! Please wait for another: ${
+              minutes.split('.')[0]
+            }:${padWithChar(seconds, 2, 0)} minutes`,
+          };
+        }
+      }
+      const newCode = await this.verifications.save(
+        this.verifications.create({ user }),
+      );
+      if (newCode) {
+        await this.mailService.sendVerificationEmail(email, newCode.code);
+        return {
+          ok: true,
+        };
+      }
+      return {
+        ok: false,
+        error: "We couldn't send a new code to you! Please try again.",
+      };
+    } catch (error) {
+      throw new InternalServerErrorException(commonErrorMessage);
+    }
+  }
   async signIn({ email, password }: SignInInput): Promise<SignInOutput> {
     try {
       email = email.toLowerCase();
@@ -124,10 +188,58 @@ export class UsersService {
         id: user.id,
       };
     } catch (error) {
+      throw new InternalServerErrorException(commonErrorMessage);
+    }
+  }
+
+  async verifyEmail({
+    email,
+    code,
+  }: VerifyEmailInput): Promise<VerifyEmailOutput> {
+    try {
+      email = email.toLowerCase();
+      const user = await this.users.findOne({ email });
+      const verifications = await this.verifications.find({
+        where: {
+          user,
+        },
+        relations: ['user'],
+        order: { id: 'DESC' },
+        take: 1,
+      });
+
+      if (!verifications || (verifications && verifications.length === 0)) {
+        return {
+          ok: false,
+          error: 'This is not a valid e-mail!',
+        };
+      }
+      const now = new Date();
+      const verification = verifications[0];
+      if (now > verification.expire_at)
+        return {
+          ok: false,
+          error: 'The verification code has expired! Please request a new one!',
+        };
+      if ('' + code !== '' + verification.code)
+        return {
+          ok: false,
+          error: 'The six-digit code is incorrect! Please try again!',
+        };
+
+      if (!user) {
+        return {
+          ok: false,
+          error: 'Your account has been deleted! Please create a new one!',
+        };
+      }
+      user.emailVerified = true;
+      await this.users.save(user);
       return {
-        ok: false,
-        error: commonErrorMessage,
+        ok: true,
       };
+    } catch (error) {
+      throw new InternalServerErrorException(commonErrorMessage);
     }
   }
 }
