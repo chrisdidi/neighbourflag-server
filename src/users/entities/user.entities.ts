@@ -5,9 +5,10 @@ import {
   registerEnumType,
 } from '@nestjs/graphql';
 import { CoreEntity } from 'src/common/dtos/common.dto';
-import { BeforeInsert, BeforeUpdate, Column, Entity } from 'typeorm';
+import { BeforeInsert, BeforeUpdate, Column, Entity, OneToMany } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { InternalServerErrorException } from '@nestjs/common';
+import { Flags } from 'src/flags/entities/flags.entities';
 
 export enum UserRole {
   User = 'User',
@@ -65,6 +66,13 @@ export class Users extends CoreEntity {
   })
   @Field(type => AllowedAuthType)
   authType: AllowedAuthType;
+
+  @Field(() => [Flags])
+  @OneToMany(
+    type => Flags,
+    flags => flags.raisedBy,
+  )
+  flags: Flags[];
 
   @BeforeInsert()
   @BeforeUpdate()

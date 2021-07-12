@@ -15,6 +15,10 @@ import { AllowedItems } from './items/entities/allowed-items.entities';
 import { AuthModule } from './auth/auth.module';
 import { RequestItems } from './items/entities/request-items.entities';
 import { ItemsRequestBy } from './items/entities/items-requested-by.entities.dto';
+import { FlagsModule } from './flags/flags.module';
+import { FlagColors } from './flags/entities/flag-colors.entities';
+import { FlagsSupportedTypes } from './flags/entities/flags-supported-types.entities';
+import { Flags } from './flags/entities/flags.entities';
 
 @Module({
   imports: [
@@ -52,6 +56,9 @@ import { ItemsRequestBy } from './items/entities/items-requested-by.entities.dto
         AllowedItems,
         ItemsRequestBy,
         RequestItems,
+        Flags,
+        FlagsSupportedTypes,
+        FlagColors,
       ],
     }),
     GraphQLModule.forRoot({
@@ -74,6 +81,7 @@ import { ItemsRequestBy } from './items/entities/items-requested-by.entities.dto
     UsersModule,
     CommonModule,
     ItemsModule,
+    FlagsModule,
   ],
   controllers: [],
   providers: [],
