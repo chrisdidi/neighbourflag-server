@@ -10,6 +10,11 @@ import { JwtModule } from './jwt/jwt.module';
 import { MailModule } from './mail/mail.module';
 import { Verification } from './users/entities/verification.entities';
 import { JwtMiddleware } from './jwt/jwt.middleware';
+import { ItemsModule } from './items/items.module';
+import { AllowedItems } from './items/entities/allowed-items.entities';
+import { AuthModule } from './auth/auth.module';
+import { RequestItems } from './items/entities/request-items.entities';
+import { ItemsRequestBy } from './items/entities/items-requested-by.entities.dto';
 
 @Module({
   imports: [
@@ -41,7 +46,13 @@ import { JwtMiddleware } from './jwt/jwt.middleware';
       database: process.env.DB_NAME,
       synchronize: process.env.NODE_ENV === 'development',
       logging: process.env.NODE_ENV === 'production',
-      entities: [Users, Verification],
+      entities: [
+        Users,
+        Verification,
+        AllowedItems,
+        ItemsRequestBy,
+        RequestItems,
+      ],
     }),
     GraphQLModule.forRoot({
       autoSchemaFile: true,
@@ -59,8 +70,10 @@ import { JwtMiddleware } from './jwt/jwt.middleware';
       fromEmail: process.env.MAILGUN_FROM_EMAIL,
       helpEmail: process.env.MAILGUN_HELP_EMAIL,
     }),
+    AuthModule,
     UsersModule,
     CommonModule,
+    ItemsModule,
   ],
   controllers: [],
   providers: [],

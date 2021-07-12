@@ -4,6 +4,7 @@ import { JwtService } from 'src/jwt/jwt.service';
 import { MailService } from 'src/mail/mail.service';
 import { padWithChar } from 'src/utils/algo';
 import { commonErrorMessage } from 'src/utils/constants';
+import { throwCommonError } from 'src/utils/handlers';
 import { Repository } from 'typeorm';
 import {
   CreateAccountInput,
@@ -33,9 +34,6 @@ export class UsersService {
     private readonly mailService: MailService,
   ) {}
 
-  throwCommonError() {
-    throw new InternalServerErrorException(commonErrorMessage);
-  }
   async findById(id: number): Promise<FindByIdOutput> {
     try {
       const user = await this.users.findOne(id);
@@ -93,7 +91,7 @@ export class UsersService {
         },
       };
     } catch (e) {
-      this.throwCommonError();
+      throwCommonError();
     }
   }
 
@@ -141,7 +139,7 @@ export class UsersService {
         error: "We couldn't send a new code to you! Please try again.",
       };
     } catch (error) {
-      this.throwCommonError();
+      throwCommonError();
     }
   }
   async signIn({ email, password }: SignInInput): Promise<SignInOutput> {
@@ -196,7 +194,7 @@ export class UsersService {
         id: user.id,
       };
     } catch (error) {
-      this.throwCommonError();
+      throwCommonError();
     }
   }
 
@@ -226,7 +224,7 @@ export class UsersService {
         ok: true,
       };
     } catch (error) {
-      this.throwCommonError();
+      throwCommonError();
     }
   }
 
@@ -277,7 +275,7 @@ export class UsersService {
         ok: true,
       };
     } catch (error) {
-      this.throwCommonError();
+      throwCommonError();
     }
   }
 }
