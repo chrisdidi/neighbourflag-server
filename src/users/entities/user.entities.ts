@@ -42,6 +42,10 @@ export class Users extends CoreEntity {
   @Field(type => String, { nullable: true })
   profile_picture?: string;
 
+  @Column({ nullable: true })
+  @Field(type => String, { nullable: true })
+  contact_no?: string;
+
   @Column({ type: 'enum', enum: UserRole, default: UserRole.User })
   @Field(type => UserRole)
   role: UserRole;

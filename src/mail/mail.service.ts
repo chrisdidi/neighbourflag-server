@@ -43,7 +43,7 @@ export class MailService {
 
   sendVerificationEmail(email: string, code: string) {
     this.sendEmail({
-      from: 'neighbourflag | Account Created!',
+      from: 'neighbourflag | Verification Code',
       subject: 'E-mail verification',
       template: 'email-code',
       email,

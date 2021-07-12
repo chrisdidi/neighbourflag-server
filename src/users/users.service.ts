@@ -15,6 +15,10 @@ import {
   RequestVerificationOuput,
 } from './dtos/request-verification';
 import { SignInInput, SignInOutput } from './dtos/sign-in.dto';
+import {
+  UpdateProfileInput,
+  UpdateProfileOutput,
+} from './dtos/update-profile.dto';
 import { VerifyEmailInput, VerifyEmailOutput } from './dtos/verify-email.dto';
 import { AllowedAuthType, Users } from './entities/user.entities';
 import { Verification } from './entities/verification.entities';
@@ -28,6 +32,10 @@ export class UsersService {
     private readonly jwtService: JwtService,
     private readonly mailService: MailService,
   ) {}
+
+  throwCommonError() {
+    throw new InternalServerErrorException(commonErrorMessage);
+  }
   async findById(id: number): Promise<FindByIdOutput> {
     try {
       const user = await this.users.findOne(id);
@@ -85,7 +93,7 @@ export class UsersService {
         },
       };
     } catch (e) {
-      throw new InternalServerErrorException(commonErrorMessage);
+      this.throwCommonError();
     }
   }
 
@@ -133,7 +141,7 @@ export class UsersService {
         error: "We couldn't send a new code to you! Please try again.",
       };
     } catch (error) {
-      throw new InternalServerErrorException(commonErrorMessage);
+      this.throwCommonError();
     }
   }
   async signIn({ email, password }: SignInInput): Promise<SignInOutput> {
@@ -188,7 +196,37 @@ export class UsersService {
         id: user.id,
       };
     } catch (error) {
-      throw new InternalServerErrorException(commonErrorMessage);
+      this.throwCommonError();
+    }
+  }
+
+  async uppdateProfile(
+    id: number,
+    { contact_no, email, name }: UpdateProfileInput,
+  ): Promise<UpdateProfileOutput> {
+    try {
+      const user = await this.users.findOne(id);
+      if (email) {
+        email = email.toLowerCase();
+        const emailExists = await this.users.findOne({ email });
+        if (emailExists) {
+          return {
+            ok: false,
+            error: 'The email address is taken! Please try a different one.',
+          };
+        }
+        user.email = email;
+        user.emailVerified = false;
+      }
+      if (name) user.name = name;
+      if (contact_no) user.contact_no = contact_no;
+
+      await this.users.save(user);
+      return {
+        ok: true,
+      };
+    } catch (error) {
+      this.throwCommonError();
     }
   }
 
@@ -239,7 +277,7 @@ export class UsersService {
         ok: true,
       };
     } catch (error) {
-      throw new InternalServerErrorException(commonErrorMessage);
+      this.throwCommonError();
     }
   }
 }
