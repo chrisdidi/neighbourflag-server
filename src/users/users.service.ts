@@ -1,5 +1,7 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { PubSub } from 'graphql-subscriptions';
+import { ME_UPDATES, PUB_SUB, USER_OPTIONS } from 'src/common/common.constants';
 import { JwtService } from 'src/jwt/jwt.service';
 import { MailService } from 'src/mail/mail.service';
 import { padWithChar } from 'src/utils/algo';
@@ -11,18 +13,16 @@ import {
   CreateAccountOutput,
 } from './dtos/create-account.dto';
 import { FindByIdOutput } from './dtos/find-by-id.dto';
-import {
-  RequestVerificationInput,
-  RequestVerificationOuput,
-} from './dtos/request-verification';
+import { RequestVerificationOuput } from './dtos/request-verification';
 import { SignInInput, SignInOutput } from './dtos/sign-in.dto';
 import {
   UpdateProfileInput,
   UpdateProfileOutput,
 } from './dtos/update-profile.dto';
 import { VerifyEmailInput, VerifyEmailOutput } from './dtos/verify-email.dto';
-import { AllowedAuthType, Users } from './entities/user.entities';
+import { AllowedAuthType, UserRole, Users } from './entities/user.entities';
 import { Verification } from './entities/verification.entities';
+import { UsersModuleOptions } from './users.interface';
 
 @Injectable()
 export class UsersService {
@@ -30,6 +30,8 @@ export class UsersService {
     @InjectRepository(Users) private readonly users: Repository<Users>,
     @InjectRepository(Verification)
     private readonly verifications: Repository<Verification>,
+    @Inject(PUB_SUB) private readonly pubSub: PubSub,
+    @Inject(USER_OPTIONS) private readonly options: UsersModuleOptions,
     private readonly jwtService: JwtService,
     private readonly mailService: MailService,
   ) {}
@@ -69,6 +71,8 @@ export class UsersService {
           name,
           password,
           authType: AllowedAuthType.email,
+          role:
+            email === this.options.adminEmail ? UserRole.Admin : UserRole.User,
         }),
       );
       if (!user)
@@ -88,6 +92,13 @@ export class UsersService {
           id: user.id,
           email,
           name,
+          emailVerified: user.emailVerified,
+          createdAt: user.createdAt,
+          active: user.active,
+          authType: user.authType,
+          contact_no: user.contact_no,
+          profile_picture: user.profile_picture,
+          role: user.role,
         },
       };
     } catch (e) {
@@ -95,11 +106,21 @@ export class UsersService {
     }
   }
 
-  async requestVerificationCode({
-    email,
-  }: RequestVerificationInput): Promise<RequestVerificationOuput> {
+  async requestVerificationCode(email): Promise<RequestVerificationOuput> {
     try {
+      if (!email) {
+        return {
+          ok: false,
+          error: 'Please sign in again!',
+        };
+      }
       email = email.toLowerCase();
+      if (!email) {
+        return {
+          ok: false,
+          error: 'Please sign out and try again.',
+        };
+      }
       const user = await this.users.findOne({ email });
       const existingCodes = await this.verifications.find({
         where: {
@@ -139,6 +160,7 @@ export class UsersService {
         error: "We couldn't send a new code to you! Please try again.",
       };
     } catch (error) {
+      console.log(error);
       throwCommonError();
     }
   }
@@ -155,7 +177,7 @@ export class UsersService {
             'email',
             'name',
             'authType',
-            'created_at',
+            'createdAt',
             'emailVerified',
           ],
         },
@@ -198,7 +220,7 @@ export class UsersService {
     }
   }
 
-  async uppdateProfile(
+  async updateProfile(
     id: number,
     { contact_no, email, name }: UpdateProfileInput,
   ): Promise<UpdateProfileOutput> {
@@ -220,6 +242,7 @@ export class UsersService {
       if (contact_no) user.contact_no = contact_no;
 
       await this.users.save(user);
+      await this.pubSub.publish(ME_UPDATES, { getMe: { user } });
       return {
         ok: true,
       };
@@ -228,13 +251,12 @@ export class UsersService {
     }
   }
 
-  async verifyEmail({
-    email,
-    code,
-  }: VerifyEmailInput): Promise<VerifyEmailOutput> {
+  async verifyEmail(
+    userId,
+    { code }: VerifyEmailInput,
+  ): Promise<VerifyEmailOutput> {
     try {
-      email = email.toLowerCase();
-      const user = await this.users.findOne({ email });
+      const user = await this.users.findOne(userId);
       const verifications = await this.verifications.find({
         where: {
           user,
@@ -271,11 +293,16 @@ export class UsersService {
       }
       user.emailVerified = true;
       await this.users.save(user);
+      await this.pubSub.publish(ME_UPDATES, { updateMe: { user } });
       return {
         ok: true,
       };
     } catch (error) {
       throwCommonError();
     }
+  }
+
+  async onUpdateUser(user: Users) {
+    await this.pubSub.publish(ME_UPDATES, { getMe: { user } });
   }
 }

@@ -14,11 +14,11 @@ export class CoreEntity {
 
   @CreateDateColumn()
   @Field(type => Date)
-  created_at: Date;
+  createdAt: Date;
 
   @UpdateDateColumn()
   @Field(type => Date)
-  updated_at: Date;
+  updatedAt: Date;
 
   @DeleteDateColumn()
   deletedAt?: Date;

@@ -4,9 +4,11 @@ import { FlagColors } from '../entities/flag-colors.entities';
 
 @InputType()
 export class InsertFlagColorInput extends PickType(PartialType(FlagColors), [
+  'description',
   'flagColor',
+  'formType',
   'name',
-  'allowedFormTypes',
+  'on',
 ]) {}
 
 @ObjectType()

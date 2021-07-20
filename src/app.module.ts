@@ -17,7 +17,6 @@ import { RequestItems } from './items/entities/request-items.entities';
 import { ItemsRequestBy } from './items/entities/items-requested-by.entities.dto';
 import { FlagsModule } from './flags/flags.module';
 import { FlagColors } from './flags/entities/flag-colors.entities';
-import { FlagsSupportedTypes } from './flags/entities/flags-supported-types.entities';
 import { Flags } from './flags/entities/flags.entities';
 
 @Module({
@@ -57,16 +56,19 @@ import { Flags } from './flags/entities/flags.entities';
         ItemsRequestBy,
         RequestItems,
         Flags,
-        FlagsSupportedTypes,
         FlagColors,
       ],
     }),
     GraphQLModule.forRoot({
       autoSchemaFile: true,
-      context: ({ req }) => ({
-        user: req['user'],
-        token: req.headers['x-jwt'],
-      }),
+      installSubscriptionHandlers: true,
+      context: ({ req, connection }) => {
+        const TOKEN_KEY = 'x-jwt';
+        return {
+          ...(req ? { user: req['user'] } : {}),
+          token: req ? req.headers['x-jwt'] : connection.context[TOKEN_KEY],
+        };
+      },
     }),
     JwtModule.forRoot({
       privateKey: process.env.JWT_KEY,
@@ -78,7 +80,9 @@ import { Flags } from './flags/entities/flags.entities';
       helpEmail: process.env.MAILGUN_HELP_EMAIL,
     }),
     AuthModule,
-    UsersModule,
+    UsersModule.forRoot({
+      adminEmail: process.env.ADMIN_EMAIL,
+    }),
     CommonModule,
     ItemsModule,
     FlagsModule,
